@@ -1,0 +1,94 @@
+name: dnd-mapp
+services:
+    dnd-mapp:
+        image: dndmapp/dnd-mapp:latest
+        container_name: dnd-mapp
+        restart: unless-stopped
+        depends_on:
+            auth-server:
+                condition: service_healthy
+        ports:
+            - '4200:4200/tcp'
+    auth-server:
+        image: dndmapp/auth-server:latest
+        container_name: auth-server
+        restart: unless-stopped
+        entrypoint: ''
+        depends_on:
+            email-service:
+                condition: service_healthy
+            auth-db-migration:
+                condition: service_completed_successfully
+            mariadb-server:
+                condition: service_healthy
+        env_file:
+            - ./.env
+        ports:
+            - '4350:4350/tcp'
+    auth-db-migration:
+        image: dndmapp/auth-server:latest
+        container_name: auth-db-migration
+        restart: on-failure
+        entrypoint: ['/bin/sh', '-c', 'npx prisma migrate deploy && npx prisma db seed']
+        env_file:
+            - ./.env
+        depends_on:
+            mariadb-server:
+                condition: service_healthy
+    email-service:
+        image: dndmapp/email-sevice:latest
+        container_name: email-service
+        restart: unless-stopped
+        entrypoint: ''
+        depends_on:
+            email-db-migration:
+                condition: service_completed_successfully
+            mariadb-server:
+                condition: service_healthy
+        env_file:
+            - ./.env
+        ports:
+            - '4350:4350/tcp'
+    email-db-migration:
+        image: dndmapp/email-service:latest
+        container_name: email-db-migration
+        restart: on-failure
+        entrypoint: ['/bin/sh', '-c', 'npx prisma migrate deploy && npx prisma db seed']
+        env_file:
+            - ./.env
+        depends_on:
+            mariadb-server:
+                condition: service_healthy
+    mariadb-server:
+        image: mariadb:latest
+        container_name: mariadb
+        restart: unless-stopped
+        ports:
+            - '3306:3306/tcp'
+        environment:
+            - MARIADB_ROOT_PASSWORD_FILE=/run/secrets/root-password
+        secrets:
+            - root-password
+        volumes:
+            - ./data/mariadb:/var/lib/mysql
+            - ./mariadb-init.sql:/docker-entrypoint-initdb.d/mariadb-init.sql
+        healthcheck:
+            test: ['CMD', 'healthcheck.sh', '--connect', '--innodb_initialized']
+            start_period: 10s
+            interval: 10s
+            timeout: 5s
+            retries: 3
+    dbeaver:
+        image: dbeaver/cloudbeaver:latest
+        container_name: dbeaver
+        restart: unless-stopped
+        depends_on:
+            mariadb-server:
+                condition: service_healthy
+        ports:
+            - '8978:8978/tcp'
+        volumes:
+            - ./data/dbeaver:/opt/cloudbeaver/workspace
+secrets:
+    root-password:
+        file: ./secrets/mariadb/root.txt
