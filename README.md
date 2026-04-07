@@ -64,7 +64,8 @@ cp mariadb-init-template.sql mariadb-init.sql
 
 Open `mariadb-init.sql` and replace each `<PLACEHOLDER>` token with the matching value from your `.env` file. This file is git-ignored.
 
-> [!TIP] The init script runs only once when the MariaDB data directory is empty. To re-run it, remove `./data/mariadb` and recreate the container.
+> [!TIP]
+> The init script runs only once when the MariaDB data directory is empty. To re-run it, remove `./data/mariadb` and recreate the container.
 
 ## Starting the stack
 
@@ -96,7 +97,8 @@ Each backend service can be started independently alongside the database.
 | Auth + email (no frontend) | `docker compose --profile auth --profile email up -d` |
 | Full stack                 | `docker compose --profile full up -d`                 |
 
-> [!NOTE] `mariadb-server` has no profile and is always started regardless of which profiles are active. The `*-db-migration` containers run once and exit; they are included automatically with their parent service's profile.
+> [!NOTE]
+> `mariadb-server` has no profile and is always started regardless of which profiles are active. The `*-db-migration` containers run once and exit; they are included automatically with their parent service's profile.
 
 ## Database layout
 
