@@ -2,5 +2,7 @@
 
 mariadb-init.sql
 
-secrets/*
-!secrets/*-template.txt
+secrets/
+.env
+
+data/
