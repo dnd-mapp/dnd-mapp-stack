@@ -118,8 +118,6 @@ services:
         image: dbeaver/cloudbeaver:latest
         container_name: dbeaver
         restart: unless-stopped
-        profiles:
-            - full
         depends_on:
             mariadb-server:
                 condition: service_healthy
