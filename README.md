@@ -22,13 +22,20 @@ D&D Mapp is a web platform for Dungeons & Dragons players and dungeon masters. T
 
 ```
 dnd-mapp-stack/
-├── compose.yaml                  # Docker Compose service definitions
-├── .env.template                 # Environment variable template → copy to .env
-├── mariadb-init-template.sql     # Database init template → copy to mariadb-init.sql
-├── secrets/
-│   └── mariadb/
-│       └── root.txt              # MariaDB root password (create manually, git-ignored)
-└── data/                         # Persistent volume data (git-ignored)
+├── compose.yaml                      # Docker Compose service definitions
+├── .env.template                     # Environment variable template → copy to .env
+├── mariadb-init.sh                   # Database initialisation script (runs once on first start)
+├── secrets/                          # Secret files (git-ignored, create manually)
+│   ├── mariadb/
+│   │   └── root.txt                  # MariaDB root password
+│   ├── auth-server/
+│   │   ├── db-password.txt           # auth_app database user password
+│   │   └── password-pepper.txt       # Password hashing pepper
+│   ├── email-service/
+│   │   └── db-password.txt           # email_app database user password
+│   └── prisma/
+│       └── db-password.txt           # prisma migration user password
+└── data/                             # Persistent volume data (git-ignored)
     ├── mariadb/
     └── dbeaver/
 ```
@@ -47,25 +54,24 @@ cp .env.template .env
 
 Open `.env` and replace every `change-me` placeholder with real values.
 
-### 2. Database root password (Docker secret)
+### 2. Secrets
+
+Sensitive credentials are managed via Docker secrets rather than environment variables. Create one file per secret — each file should contain only the secret value with no trailing newline:
 
 ```bash
-mkdir -p secrets/mariadb
-echo "your-root-password" > secrets/mariadb/root.txt
+mkdir -p secrets/mariadb secrets/auth-server secrets/email-service secrets/prisma
+
+echo -n "your-root-password"         > secrets/mariadb/root.txt
+echo -n "your-auth-app-password"     > secrets/auth-server/db-password.txt
+echo -n "your-password-pepper"       > secrets/auth-server/password-pepper.txt
+echo -n "your-email-app-password"    > secrets/email-service/db-password.txt
+echo -n "your-prisma-password"       > secrets/prisma/db-password.txt
 ```
 
-The file must not end with a trailing newline if you echo with `-n`, or just use a text editor. This file is git-ignored.
-
-### 3. Database initialization script
-
-```bash
-cp mariadb-init-template.sql mariadb-init.sql
-```
-
-Open `mariadb-init.sql` and replace each `<PLACEHOLDER>` token with the matching value from your `.env` file. This file is git-ignored.
+The `secrets/` directory is git-ignored. The passwords in `secrets/auth-server/db-password.txt`, `secrets/email-service/db-password.txt`, and `secrets/prisma/db-password.txt` must match the values used by the applications — set them to whatever you like, but keep them consistent.
 
 > [!TIP]
-> The init script runs only once when the MariaDB data directory is empty. To re-run it, remove `./data/mariadb` and recreate the container.
+> The MariaDB init script runs only once when the data directory is empty. To re-run it (e.g. after changing a password), remove `./data/mariadb` and recreate the container.
 
 ## Starting the stack
 
