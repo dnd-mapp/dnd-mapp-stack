@@ -1,7 +1,5 @@
 .idea/
 
-mariadb-init.sql
-
 secrets/
 .env
 
