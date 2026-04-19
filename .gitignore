@@ -1,6 +1,6 @@
 .idea/
 
-mariadb-init.sql
+secrets/
+.env
 
-secrets/*
-!secrets/*-template.txt
+data/

@@ -4,7 +4,7 @@ services:
     # Frontend
     # ----------------------------------------------------------
     dnd-mapp:
-        image: dndmapp/dnd-mapp:latest
+        image: dndmapp/dnd-mapp:dev
         container_name: dnd-mapp
         restart: unless-stopped
         profiles:
@@ -19,10 +19,10 @@ services:
     # Auth service
     # ----------------------------------------------------------
     auth-server:
-        image: dndmapp/auth-server:latest
+        image: dndmapp/auth-server:dev
         container_name: auth-server
         restart: unless-stopped
-        entrypoint: ''
+        command: ['node', '/app/main.js']
         profiles:
             - auth
             - full
@@ -36,19 +36,31 @@ services:
                 condition: service_healthy
         env_file:
             - ./.env
+        environment:
+            - AUTH_SERVER_DB_PASSWORD_FILE=/run/secrets/auth-server-db-password
+            - AUTH_SERVER_PASSWORD_PEPPER_FILE=/run/secrets/auth-server-password-pepper
+        secrets:
+            - auth-server-db-password
+            - auth-server-password-pepper
         ports:
             - '4350:4350/tcp'
 
     auth-db-migration:
-        image: dndmapp/auth-server:latest
+        image: dndmapp/auth-server:dev
         container_name: auth-db-migration
         restart: on-failure
         profiles:
             - auth
             - full
-        entrypoint: ['/bin/sh', '-c', 'npx prisma migrate deploy && npx prisma db seed']
+        entrypoint: ['/app/entrypoint.sh', 'migrate']
         env_file:
             - ./.env
+        environment:
+            - AUTH_SERVER_DB_PASSWORD_FILE=/run/secrets/auth-server-db-password
+            - PRISMA_DB_PASSWORD_FILE=/run/secrets/prisma-db-password
+        secrets:
+            - auth-server-db-password
+            - prisma-db-password
         depends_on:
             mariadb-server:
                 condition: service_healthy
@@ -57,7 +69,7 @@ services:
     # Email service
     # ----------------------------------------------------------
     email-service:
-        image: dndmapp/email-service:latest
+        image: dndmapp/email-service:dev
         container_name: email-service
         restart: unless-stopped
         entrypoint: ''
@@ -75,7 +87,7 @@ services:
             - '4450:4450/tcp'
 
     email-db-migration:
-        image: dndmapp/email-service:latest
+        image: dndmapp/email-service:dev
         container_name: email-db-migration
         restart: on-failure
         profiles:
@@ -99,11 +111,22 @@ services:
             - '3306:3306/tcp'
         environment:
             - MARIADB_ROOT_PASSWORD_FILE=/run/secrets/root-password
+            - AUTH_SERVER_DB_PASSWORD_FILE=/run/secrets/auth-server-db-password
+            - EMAIL_SERVICE_DB_PASSWORD_FILE=/run/secrets/email-service-db-password
+            - PRISMA_DB_PASSWORD_FILE=/run/secrets/prisma-db-password
+            - AUTH_SERVER_DB_SCHEMA
+            - AUTH_SERVER_DB_USER
+            - EMAIL_SERVICE_DB_SCHEMA
+            - EMAIL_SERVICE_DB_USER
+            - PRISMA_DB_USER
         secrets:
             - root-password
+            - auth-server-db-password
+            - email-service-db-password
+            - prisma-db-password
         volumes:
             - ./data/mariadb:/var/lib/mysql
-            - ./mariadb-init.sql:/docker-entrypoint-initdb.d/mariadb-init.sql
+            - ./mariadb-init.sh:/docker-entrypoint-initdb.d/mariadb-init.sh
         healthcheck:
             test: ['CMD', 'healthcheck.sh', '--connect', '--innodb_initialized']
             start_period: 10s
@@ -118,8 +141,6 @@ services:
         image: dbeaver/cloudbeaver:latest
         container_name: dbeaver
         restart: unless-stopped
-        profiles:
-            - full
         depends_on:
             mariadb-server:
                 condition: service_healthy
@@ -131,3 +152,11 @@ services:
 secrets:
     root-password:
         file: ./secrets/mariadb/root.txt
+    auth-server-db-password:
+        file: ./secrets/auth-server/db-password.txt
+    auth-server-password-pepper:
+        file: ./secrets/auth-server/password-pepper.txt
+    email-service-db-password:
+        file: ./secrets/email-service/db-password.txt
+    prisma-db-password:
+        file: ./secrets/prisma/db-password.txt
